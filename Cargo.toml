@@ -1,0 +1,14 @@
+[package]
+name = "media-to-bw-img"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["video"]
+video = ["ffmpeg-next"]
+image = []
+
+[dependencies]
+ffmpeg-next = { version = "*", features = ["codec"], optional = true }
+clap = { version = "*", features = ["derive"] }
+anyhow = "*"
