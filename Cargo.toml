@@ -9,6 +9,7 @@ video = ["ffmpeg-next"]
 image = []
 
 [dependencies]
-ffmpeg-next = { version = "*", features = ["codec"], optional = true }
+ffmpeg-next = { version = "*", optional = true }
 clap = { version = "*", features = ["derive"] }
+bw-img = { git = "https://github.com/arkuna23/bw-img.git" }
 anyhow = "*"

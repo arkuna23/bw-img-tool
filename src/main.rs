@@ -4,7 +4,6 @@ use clap::Parser;
 mod img;
 #[cfg(feature = "video")]
 mod vid;
-mod bw;
 
 #[derive(clap::Parser)]
 struct Args {
@@ -29,4 +28,13 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+    #[cfg(feature = "video")]
+    if let Some(video) = args.video {
+        match vid::transform_vid(&video, args.width, args.height) {
+            Ok(frames) => {}
+            Err(e) => {
+                eprintln!("Error: {}", e);
+            }
+        }
+    }
 }
