@@ -7,8 +7,6 @@ use ffmpeg_next::{
     software::scaling::{Context as ScalingContext, Flags},
 };
 
-const BW_THRESHOLD: u8 = 128;
-
 fn process_frames(
     decoder: &mut ffmpeg_next::decoder::Video,
     scaler: &mut ScalingContext,
@@ -19,6 +17,8 @@ fn process_frames(
         let mut scalled = Video::empty();
         scaler.run(&decoded, &mut scalled)?;
 
+        todo!("Convert scalled frame to BWImage with file stream");
+        todo!("progress bar");
         let img = BWImage::parse(RgbImage::new(
             decoded.data(0),
             scaler.output().width,

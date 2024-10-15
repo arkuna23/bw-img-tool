@@ -1,5 +1,5 @@
 [package]
-name = "media-to-bw-img"
+name = "bw-img-tool"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,3 +13,4 @@ ffmpeg-next = { version = "*", optional = true }
 clap = { version = "*", features = ["derive"] }
 bw-img = { git = "https://github.com/arkuna23/bw-img.git" }
 anyhow = "*"
+crossterm = "*"
