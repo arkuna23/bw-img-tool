@@ -11,7 +11,8 @@ image = []
 [dependencies]
 ffmpeg-next = { version = "*", optional = true }
 clap = { version = "*", features = ["derive"] }
-bw-img = { git = "https://github.com/arkuna23/bw-img.git" }
+#bw-img = { git = "https://github.com/arkuna23/bw-img.git" }
+bw-img = { path = "../bw-img"}
 anyhow = "*"
 flate2 = "*"
-crossterm = "*"
+indicatif = "*"

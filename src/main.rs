@@ -2,8 +2,7 @@ use std::fs::File;
 
 use bw_img::{BWByteData, IterDirection, IterOutput};
 use clap::Parser;
-use crossterm::{style, ExecutableCommand};
-use flate2::{write::GzEncoder, Compression};
+use flate2::{write::ZlibEncoder, Compression};
 
 #[cfg(feature = "image")]
 mod img;
@@ -76,14 +75,18 @@ fn convert(args: ConvertArgs) -> anyhow::Result<()> {
     #[cfg(feature = "video")]
     if args.typ.video {
         let mut file = File::create(args.output.unwrap_or("output.imgs".into()))?;
-        let mut e = GzEncoder::new(&mut file, Compression::best());
-
-        if let Err(e) = vid::transform_vid(&args.path, args.width, args.height, &mut e) {
-            eprintln!("Error occurred while processing video.");
-            Err(e)
-        } else {
-            e.finish()?;
-            Ok(())
+        let mut encoder = ZlibEncoder::new(&mut file, Compression::best());
+        println!("Processing video...");
+        match vid::transform_vid(&args.path, args.width, args.height, &mut encoder) {
+            Ok((p, s)) => {
+                encoder.finish()?;
+                println!("processed {} frames, skipped {} frames", p, s);
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("Error occurred while processing video.");
+                Err(e)
+            }
         }
     } else {
         unimplemented!()
@@ -93,31 +96,27 @@ fn convert(args: ConvertArgs) -> anyhow::Result<()> {
 fn show(args: ShowArgs) -> anyhow::Result<()> {
     let mut file = std::fs::File::open(&args.path)?;
     println!("Decompressing {}...", args.path);
+
     let imgs = bw_img::file::zip::decompress_imgs(&mut file)?;
 
-    fn write_pixel(stdout: &mut std::io::Stdout, is_white: bool) -> anyhow::Result<()> {
+    fn write_pixel(is_white: bool) {
         if is_white {
-            stdout.execute(style::SetBackgroundColor(style::Color::White))?;
+            print!("██");
         } else {
-            stdout.execute(style::SetForegroundColor(style::Color::Black))?;
+            print!("  ");
         }
-
-        print!("  ");
-        Ok(())
     }
 
     match imgs.get(args.index) {
         Some(img) => {
-            let mut stdout = std::io::stdout();
-
-            for ele in img.iterator(IterDirection::Vertical) {
+            for ele in img.iterator(IterDirection::Horizontal) {
                 match ele {
                     IterOutput::Byte { byte, len } => {
                         for ele in byte.bw_byte_iter(len) {
-                            write_pixel(&mut stdout, ele)?;
+                            write_pixel(ele);
                         }
-                    },
-                    IterOutput::NewLine => println!()
+                    }
+                    IterOutput::NewLine => println!(),
                 }
             }
         }
