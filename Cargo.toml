@@ -13,4 +13,5 @@ ffmpeg-next = { version = "*", optional = true }
 clap = { version = "*", features = ["derive"] }
 bw-img = { git = "https://github.com/arkuna23/bw-img.git" }
 anyhow = "*"
+flate2 = "*"
 crossterm = "*"

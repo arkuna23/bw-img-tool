@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use bw_img::{BWImage, RgbImage};
+use bw_img::{BWImage, RgbData};
 use ffmpeg_next::{
     codec::Context as CodecContext,
     format::{self, Pixel},
@@ -7,31 +7,35 @@ use ffmpeg_next::{
     software::scaling::{Context as ScalingContext, Flags},
 };
 
-fn process_frames(
+fn process_frames<T: std::io::Write>(
     decoder: &mut ffmpeg_next::decoder::Video,
     scaler: &mut ScalingContext,
-    frames: &mut Vec<BWImage>,
+    out: &mut T,
 ) -> anyhow::Result<()> {
     let mut decoded = Video::empty();
     while decoder.receive_frame(&mut decoded).is_ok() {
         let mut scalled = Video::empty();
         scaler.run(&decoded, &mut scalled)?;
 
-        todo!("Convert scalled frame to BWImage with file stream");
         todo!("progress bar");
-        let img = BWImage::parse(RgbImage::new(
+        let img = BWImage::parse(&RgbData::new(
             decoded.data(0),
             scaler.output().width,
             scaler.output().height,
         ))
         .map_err(|e| anyhow!("{}", e.to_string()))?;
-        frames.push(img);
+        img.encode_as_file(out)?;
     }
 
     Ok(())
 }
 
-pub fn transform_vid(path: &str, width: Option<u32>, height: Option<u32>) -> anyhow::Result<Vec<BWImage>> {
+pub fn transform_vid<T: std::io::Write>(
+    path: &str,
+    width: Option<u32>,
+    height: Option<u32>,
+    out: &mut T,
+) -> anyhow::Result<()> {
     ffmpeg_next::init()?;
     let mut ictx = format::input(path)?;
     let stream = ictx
@@ -52,13 +56,12 @@ pub fn transform_vid(path: &str, width: Option<u32>, height: Option<u32>) -> any
         Flags::BILINEAR,
     )?;
 
-    let mut frames = vec![];
     for (stream, pack) in ictx.packets() {
         if stream.index() == vid_index {
             decoder.send_packet(&pack)?;
-            process_frames(&mut decoder, &mut scaler, &mut frames)?;
+            process_frames(&mut decoder, &mut scaler, out)?;
         }
     }
 
-    Ok(frames)
+    Ok(())
 }
