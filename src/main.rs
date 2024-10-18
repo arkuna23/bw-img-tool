@@ -1,13 +1,13 @@
 use std::fs::File;
 
-use bw_img::{BWByteData, IterDirection, IterOutput};
+use bw_img::{iter_direction::Horizontal, BWByteData, IterOutput};
+use bw_img::file::video;
 use clap::Parser;
 use flate2::{write::ZlibEncoder, Compression};
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[cfg(feature = "image")]
 mod img;
-#[cfg(feature = "video")]
-mod vid;
 
 #[derive(clap::Parser)]
 struct Args {
@@ -77,17 +77,40 @@ fn convert(args: ConvertArgs) -> anyhow::Result<()> {
         let mut file = File::create(args.output.unwrap_or("output.imgs".into()))?;
         let mut encoder = ZlibEncoder::new(&mut file, Compression::best());
         println!("Processing video...");
-        match vid::transform_vid(&args.path, args.width, args.height, &mut encoder) {
-            Ok((p, s)) => {
-                encoder.finish()?;
-                println!("processed {} frames, skipped {} frames", p, s);
-                Ok(())
-            }
-            Err(e) => {
-                eprintln!("Error occurred while processing video.");
-                Err(e)
+
+        let vid_iter = video::convert_video(&args.path, args.width, args.height)?;
+        println!("Total frames: {}", vid_iter.frame_count);
+        println!(
+            "Input resolution: {}x{}",
+            vid_iter.input_size.0, vid_iter.input_size.1
+        );
+        println!(
+            "Output resolution: {}x{}",
+            vid_iter.output_size.0, vid_iter.output_size.1
+        );
+        println!("Video duration: {}s", vid_iter.duration);
+        println!("Frame rate: {}", vid_iter.frame_rate);
+        println!("Converting...");
+
+        let progress = ProgressBar::new(vid_iter.frame_count);
+        progress.set_style(
+            ProgressStyle::with_template("{bar:40} {pos}/{len} | {elapsed}, eta: {eta}").unwrap(),
+        );
+        let mut skipped = 0;
+        for result in vid_iter {
+            let (f, s) = result?;
+            progress.inc(f.len() as u64);
+            skipped += s;
+
+            for ele in f {
+                ele.encode_as_file(&mut encoder)?;
             }
         }
+        encoder.finish()?;
+        progress.finish();
+        println!("Finished with {} frames skipped.", skipped);
+
+        Ok(())
     } else {
         unimplemented!()
     }
@@ -97,8 +120,6 @@ fn show(args: ShowArgs) -> anyhow::Result<()> {
     let mut file = std::fs::File::open(&args.path)?;
     println!("Decompressing {}...", args.path);
 
-    let imgs = bw_img::file::zip::decompress_imgs(&mut file)?;
-
     fn write_pixel(is_white: bool) {
         if is_white {
             print!("██");
@@ -107,9 +128,10 @@ fn show(args: ShowArgs) -> anyhow::Result<()> {
         }
     }
 
-    match imgs.get(args.index) {
+    let mut imgs = bw_img::file::compress::decompress_imgs(&mut file);
+    match imgs.nth(args.index) {
         Some(img) => {
-            for ele in img.iterator(IterDirection::Horizontal) {
+            for ele in img?.iterator(Horizontal) {
                 match ele {
                     IterOutput::Byte { byte, len } => {
                         for ele in byte.bw_byte_iter(len) {
