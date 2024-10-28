@@ -6,9 +6,6 @@ use clap::Parser;
 use flate2::{write::ZlibEncoder, Compression};
 use indicatif::{ProgressBar, ProgressStyle};
 
-#[cfg(feature = "image")]
-mod img;
-
 #[derive(clap::Parser)]
 struct Args {
     #[command(subcommand)]
